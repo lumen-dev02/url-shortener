@@ -38,7 +38,7 @@ func newTestHandler() http.Handler {
 }
 
 func TestCreateReturnsCreated(t *testing.T) {
-	body := bytes.NewBufferString(`{"url":"https://example.com"}`)
+	body := bytes.NewBufferString(`{"original_url":"https://example.com"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/shorten", body)
 	rec := httptest.NewRecorder()
 	newTestHandler().ServeHTTP(rec, req)

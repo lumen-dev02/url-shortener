@@ -30,7 +30,7 @@ func (h *Handler) Routes() http.Handler {
 }
 
 type createRequest struct {
-	URL string `json:"url"`
+	OriginalURL string `json:"original_url"`
 }
 
 type createResponse struct {
@@ -58,7 +58,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.Create(r.Context(), request.URL)
+	result, err := h.service.Create(r.Context(), request.OriginalURL)
 	if errors.Is(err, service.ErrInvalidURL) {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "url must be a valid HTTP or HTTPS URL"})
 		return
