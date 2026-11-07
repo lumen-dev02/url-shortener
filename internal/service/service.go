@@ -33,8 +33,8 @@ func New(repo repository.Repository, baseURL string) *Service {
 
 func (s *Service) Create(ctx context.Context, rawURL string) (Shortened, error) {
 	normalized := strings.TrimSpace(rawURL)
-	parsed, err := url.ParseRequestURI(normalized)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+	parsed, err := url.Parse(normalized)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || strings.Trim(parsed.Hostname(), ".") == "" {
 		return Shortened{}, ErrInvalidURL
 	}
 

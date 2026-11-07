@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,6 +19,9 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 }
 
 func (p *Postgres) Create(ctx context.Context, item URL) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	_, err := p.pool.Exec(ctx,
 		"INSERT INTO urls (code, original_url) VALUES ($1, $2)",
 		item.Code, item.OriginalURL,
@@ -33,6 +37,9 @@ func (p *Postgres) Create(ctx context.Context, item URL) error {
 }
 
 func (p *Postgres) Get(ctx context.Context, code string) (URL, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	var item URL
 	err := p.pool.QueryRow(ctx,
 		"SELECT code, original_url FROM urls WHERE code = $1",

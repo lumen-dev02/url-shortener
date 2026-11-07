@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("url not found")
+	ErrNotFound     = errors.New("url not found")
 	ErrCodeConflict = errors.New("short code already exists")
 )
 
