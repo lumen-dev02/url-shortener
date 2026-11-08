@@ -34,6 +34,16 @@ func (m *memoryRepository) Get(_ context.Context, code string) (repository.URL, 
 	return item, nil
 }
 
+func (m *memoryRepository) RecordVisit(ctx context.Context, code string) (repository.URL, error) {
+	item, err := m.Get(ctx, code)
+	if err != nil {
+		return repository.URL{}, err
+	}
+	item.Visits++
+	m.items[code] = item
+	return item, nil
+}
+
 func TestCreateAndResolve(t *testing.T) {
 	repo := newMemoryRepository()
 	svc := New(repo, "http://localhost:8080")
@@ -53,6 +63,10 @@ func TestCreateAndResolve(t *testing.T) {
 	}
 	if resolved != "https://example.com/path" {
 		t.Fatalf("resolved URL = %q", resolved)
+	}
+	stats, err := svc.Stats(context.Background(), created.Code)
+	if err != nil || stats.Visits != 1 {
+		t.Fatalf("stats = %+v, %v", stats, err)
 	}
 }
 

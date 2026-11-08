@@ -42,9 +42,9 @@ func (p *Postgres) Get(ctx context.Context, code string) (URL, error) {
 
 	var item URL
 	err := p.pool.QueryRow(ctx,
-		"SELECT code, original_url FROM urls WHERE code = $1",
+		"SELECT code, original_url, visits FROM urls WHERE code = $1",
 		code,
-	).Scan(&item.Code, &item.OriginalURL)
+	).Scan(&item.Code, &item.OriginalURL, &item.Visits)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return URL{}, ErrNotFound
 	}
@@ -52,4 +52,18 @@ func (p *Postgres) Get(ctx context.Context, code string) (URL, error) {
 		return URL{}, err
 	}
 	return item, nil
+}
+
+// RecordVisit increments in PostgreSQL so concurrent redirects cannot lose updates.
+func (p *Postgres) RecordVisit(ctx context.Context, code string) (URL, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	var item URL
+	err := p.pool.QueryRow(ctx,
+		"UPDATE urls SET visits = visits + 1 WHERE code = $1 RETURNING code, original_url, visits", code,
+	).Scan(&item.Code, &item.OriginalURL, &item.Visits)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return URL{}, ErrNotFound
+	}
+	return item, err
 }

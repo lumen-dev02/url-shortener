@@ -55,11 +55,15 @@ func (s *Service) Create(ctx context.Context, rawURL string) (Shortened, error) 
 }
 
 func (s *Service) Resolve(ctx context.Context, code string) (string, error) {
-	item, err := s.repo.Get(ctx, code)
+	item, err := s.repo.RecordVisit(ctx, code)
 	if err != nil {
 		return "", err
 	}
 	return item.OriginalURL, nil
+}
+
+func (s *Service) Stats(ctx context.Context, code string) (repository.URL, error) {
+	return s.repo.Get(ctx, code)
 }
 
 func generateCode(length int) (string, error) {

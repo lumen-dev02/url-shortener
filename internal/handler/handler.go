@@ -25,6 +25,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/shorten", h.create)
 	mux.HandleFunc("GET /healthz", h.health)
+	mux.HandleFunc("GET /api/v1/urls/{code}/stats", h.stats)
 	mux.HandleFunc("GET /{code}", h.redirect)
 	return mux
 }
@@ -80,7 +81,15 @@ func (h *Handler) redirect(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "short URL not found"})
 		return
 	}
-	originalURL, err := h.service.Resolve(r.Context(), code)
+	var originalURL string
+	var err error
+	if r.Method == http.MethodHead {
+		var item repository.URL
+		item, err = h.service.Stats(r.Context(), code)
+		originalURL = item.OriginalURL
+	} else {
+		originalURL, err = h.service.Resolve(r.Context(), code)
+	}
 	if errors.Is(err, repository.ErrNotFound) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "short URL not found"})
 		return
@@ -91,6 +100,21 @@ func (h *Handler) redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, originalURL, http.StatusFound)
+}
+
+func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
+	item, err := h.service.Stats(r.Context(), r.PathValue("code"))
+	if errors.Is(err, repository.ErrNotFound) {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "short URL not found"})
+		return
+	}
+	if err != nil {
+		h.logger.Error("get URL stats", "error", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, item)
 }
 
 func (h *Handler) health(w http.ResponseWriter, _ *http.Request) {

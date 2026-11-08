@@ -40,6 +40,16 @@ func (m *testRepository) Get(_ context.Context, code string) (repository.URL, er
 	return item, nil
 }
 
+func (m *testRepository) RecordVisit(ctx context.Context, code string) (repository.URL, error) {
+	item, err := m.Get(ctx, code)
+	if err != nil {
+		return repository.URL{}, err
+	}
+	item.Visits++
+	m.items[code] = item
+	return item, nil
+}
+
 func newTestHandler() http.Handler {
 	repo := &testRepository{items: make(map[string]repository.URL)}
 	svc := service.New(repo, "http://localhost:8080")
@@ -130,6 +140,17 @@ func TestCreateAndRedirect(t *testing.T) {
 			t.Fatal("HEAD response must have an empty body")
 		}
 	}
+	for range 2 {
+		rec = httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/urls/"+created.Code+"/stats", nil))
+		var stats repository.URL
+		if err := json.Unmarshal(rec.Body.Bytes(), &stats); err != nil {
+			t.Fatal(err)
+		}
+		if rec.Code != 200 || stats.Visits != 1 || stats.OriginalURL != original {
+			t.Fatalf("stats (HEAD and stats requests must not count): %d %+v", rec.Code, stats)
+		}
+	}
 }
 
 func TestRoutes(t *testing.T) {
@@ -143,6 +164,8 @@ func TestRoutes(t *testing.T) {
 		{http.MethodDelete, "/abcdef", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/", http.StatusNotFound},
 		{http.MethodGet, "/a/b", http.StatusNotFound},
+		{http.MethodGet, "/api/v1/urls/missing/stats", http.StatusNotFound},
+		{http.MethodPost, "/api/v1/urls/missing/stats", http.StatusMethodNotAllowed},
 	} {
 		t.Run(tc.method+tc.path, func(t *testing.T) {
 			rec := httptest.NewRecorder()
@@ -164,6 +187,7 @@ func TestDatabaseErrorsAreNotExposed(t *testing.T) {
 	}{
 		{http.MethodPost, "/api/v1/shorten", `{"original_url":"https://example.com"}`},
 		{http.MethodGet, "/abcdef", ""},
+		{http.MethodGet, "/api/v1/urls/abcdef/stats", ""},
 	} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)))
