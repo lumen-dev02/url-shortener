@@ -29,6 +29,9 @@ func Load() (Config, error) {
 	if base.User != nil || base.RawQuery != "" || base.ForceQuery || strings.Contains(cfg.BaseURL, "#") {
 		return Config{}, fmt.Errorf("BASE_URL must be an HTTP or HTTPS URL without credentials, query or fragment")
 	}
+	if base.Path != "" || base.RawPath != "" {
+		return Config{}, fmt.Errorf("BASE_URL must not contain a path; use a dedicated host for short links")
+	}
 	return cfg, nil
 }
 

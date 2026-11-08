@@ -18,12 +18,12 @@ func TestLoadDefaults(t *testing.T) {
 func TestLoadEnvironment(t *testing.T) {
 	t.Setenv("DATABASE_URL", " postgres://localhost/shortener ")
 	t.Setenv("HTTP_ADDR", " 127.0.0.1:9090 ")
-	t.Setenv("BASE_URL", " https://short.example/links/ ")
+	t.Setenv("BASE_URL", " https://short.example/ ")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.HTTPAddr != "127.0.0.1:9090" || cfg.BaseURL != "https://short.example/links" || cfg.DatabaseURL != "postgres://localhost/shortener" {
+	if cfg.HTTPAddr != "127.0.0.1:9090" || cfg.BaseURL != "https://short.example" || cfg.DatabaseURL != "postgres://localhost/shortener" {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 }
@@ -44,5 +44,15 @@ func TestLoadRejectsInvalidBaseURL(t *testing.T) {
 				t.Fatalf("expected an error for BASE_URL %q", value)
 			}
 		})
+	}
+}
+
+func TestLoadRejectsBaseURLPath(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/shortener")
+	for _, value := range []string{"https://short.example/links", "https://short.example/links/", "https://short.example/%2F"} {
+		t.Setenv("BASE_URL", value)
+		if _, err := Load(); err == nil {
+			t.Errorf("accepted BASE_URL with a path: %q", value)
+		}
 	}
 }
